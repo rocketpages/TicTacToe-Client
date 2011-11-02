@@ -1,0 +1,155 @@
+<style type="text/css">
+	
+	div {
+	    float: left;
+	    width:50px;
+	    height:50px;
+	    outline:1px solid #bbb;
+	    padding-left: 10px;
+	    padding-bottom: 10px;
+	    background:white;
+	    float:left;
+	    font-size:50px;
+	    overflow:hidden;
+	    font-family: sans-serif;
+	}
+	
+	div:nth-of-type(3n + 1) {
+	    clear:left
+	}
+		
+	p {
+	    clear:both;
+	    padding:10px 0;
+	}
+	
+	div.x {
+    	color: green;
+	}
+
+	div.o {
+    	color: blue;
+	}		
+
+</style>
+
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+<script src="jquery.json-2.3.js"></script>
+
+<script type="text/javascript">
+
+	var player;
+	var opponent;
+	var gameId;
+	var yourTurn = false;
+
+	var ws;
+
+	$(document).ready(function() {
+		
+		/* Bind to the click of all divs (tic tac toe cells) on the page
+		   We would want to qualify this if we styled the game fancier! */
+		$("div").click(function () {
+			// Only process clicks if it's your turn.
+			if (yourTurn == true) { 
+		      // Stop processing clicks and invoke sendMessage(). 
+			  yourTurn = false;
+	    	  sendMessage(this.id);
+	    	  // Add the X or O to the game board and update status.
+		      $("#" + this.id).addClass(player);
+		      $("#" + this.id).html(player);	    	  
+		      $('#status').text("Your opponent is strategizing.");    	 					      
+	    	}
+	    });	
+
+		// On the intial page load we perform the handshake with the server.
+	    ws = new WebSocket("ws://localhost:9000/websocket");
+	    
+	    ws.onopen = function(event) { 
+	    	$('#status').text("Waiting for an opponent."); 
+	    }
+	    
+	    // Process turn message ("push") from the server.
+   	 	ws.onmessage = function(event) {
+   	 		var message = jQuery.parseJSON(event.data);
+   	 		
+   	 		// Process the handshake response when the page is opened
+   	 		if (message.type === 'handshake') {
+	   	 		gameId = message.gameId;
+	   	 		player = message.player;
+	
+	   	 	 	if (player === "x") {
+	   	 	 		opponent = "o"; 
+	   	 	 	} else {
+	   	 	 		opponent = "x";   	 	 	
+	   	 	 	}
+   	 		}
+   	 		
+   	 		// Process your opponent's turn data.
+   	 		if (message.type === 'response') {
+   	 			// Show their turn info on the game board.
+   	 			$("#" + message.gridId).addClass(message.opponent);
+   	 			$("#" + message.gridId).html(message.opponent);
+   	 			// Switch to your turn.
+   	 			if (message.winner == true) {
+   	 				$('#status').text(message.opponent + " is the winner!");    	   	 			
+   	 			} else {
+   	 				yourTurn = true;
+		    		$('#status').text("It's your turn!");    	   	 			
+		    	}
+   	 		}   	 	
+   	 		
+   	 		/* The initial turn indicator from the server. Determines who starts
+   	 		   the game first. Both players wait until the server gives the OK
+   	 		   to start a game. */
+   	 		if (message.type === 'turn') {
+   	 			if (message.turn === 'YOUR_TURN') {
+   	 				yourTurn = true;
+		    		$('#status').text("It's your turn!");    	 			
+		    	} else if (message.turn === 'WAITING') {
+					$('#status').text("Your opponent is strategizing.");    	 					    	
+		    	}
+   	 		}
+   	 		
+   	 		/* The server has determined you are the winner and sent you this message. */
+   	 		if (message.type === 'you_win') {
+				$('#status').text("You win!");    	   	 			   	 			
+   	 		}	
+   	 	} 
+   	 	
+   	 	ws.onclose = function(event) { 
+   	 		$('#status').text("The WebSocket Connection Has Been Closed."); } 
+   	 		
+   	 	//capture the return key
+		$("form").bind("keydown", function(e) {
+			if (e.keyCode == 13) {
+				sendMessage();
+				//prevent default form submission behaviour
+				return false; 
+			}
+		});
+			
+   	});
+    
+    // Send your turn information to the server.
+    function sendMessage(id) {
+    	var message = {gameId: gameId, player: player, gridId:id};
+    	var encoded = $.toJSON(message);
+    	ws.send(encoded);
+    }	
+
+</script>
+
+<div id="grid_1">&nbsp;</div>
+<div id="grid_2">&nbsp;</div>
+<div id="grid_3">&nbsp;</div>
+
+<div id="grid_4">&nbsp;</div>
+<div id="grid_5">&nbsp;</div>
+<div id="grid_6">&nbsp;</div>
+
+<div id="grid_7">&nbsp;</div>
+<div id="grid_8">&nbsp;</div>
+<div id="grid_9">&nbsp;</div>
+
+<p id="status">&nbsp;</p>
