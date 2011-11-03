@@ -10,6 +10,24 @@ var WEBSOCKET_CLOSED_STATUS = "The WebSocket Connection Has Been Closed.";
 var PLAYER_O = "O";
 var PLAYER_X = "X";
 
+// Constants - Incoming message types
+var MESSAGE_HANDSHAKE = "handshake";
+var MESSAGE_OPPONENT_UPDATE = "response";
+var MESSAGE_TURN_INDICATOR = "turn";
+var MESSAGE_GAME_OVER = "game_over";
+
+// Constants - Message turn indicator types
+var MESSAGE_TURN_INDICATOR_YOUR_TURN = "YOUR_TURN";
+var MESSAGE_TURN_INDICATOR_WAITING = "WAITING";
+
+// Constants - Game over message types
+var MESSAGE_GAME_OVER_YOU_WIN = "YOU_WIN";
+var MESSAGE_GAME_OVER_TIED = "TIED";
+
+// Constants - WebSocket URL
+var WEBSOCKET_URL = "ws://localhost:9000/websocket";
+
+
 // Variables
 var player;
 var opponent;
@@ -37,7 +55,7 @@ $(document).ready(function() {
     });	
 
 	// On the intial page load we perform the handshake with the server.
-    ws = new WebSocket("ws://localhost:9000/websocket");
+    ws = new WebSocket(WEBSOCKET_URL);
     
     ws.onopen = function(event) { 
     	$('#status').text(WAITING_STATUS); 
@@ -48,19 +66,19 @@ $(document).ready(function() {
  		var message = jQuery.parseJSON(event.data);
  		
  		// Process the handshake response when the page is opened
- 		if (message.type === 'handshake') {
+ 		if (message.type === MESSAGE_HANDSHAKE) {
    	 		gameId = message.gameId;
    	 		player = message.player;
 
-   	 	 	if (player === "x") {
-   	 	 		opponent = "o"; 
+   	 	 	if (player === PLAYER_X) {
+   	 	 		opponent = PLAYER_O; 
    	 	 	} else {
-   	 	 		opponent = "x";   	 	 	
+   	 	 		opponent = PLAYER_X;   	 	 	
    	 	 	}
  		}
  		
  		// Process your opponent's turn data.
- 		if (message.type === 'response') {
+ 		if (message.type === MESSAGE_OPPONENT_UPDATE) {
  			// Show their turn info on the game board.
  			$("#" + message.gridId).addClass(message.opponent);
  			$("#" + message.gridId).html(message.opponent);
@@ -79,21 +97,21 @@ $(document).ready(function() {
  		/* The initial turn indicator from the server. Determines who starts
  		   the game first. Both players wait until the server gives the OK
  		   to start a game. */
- 		if (message.type === 'turn') {
- 			if (message.turn === 'YOUR_TURN') {
+ 		if (message.type === MESSAGE_TURN_INDICATOR) {
+ 			if (message.turn === MESSAGE_TURN_INDICATOR_YOUR_TURN) {
  				yourTurn = true;
 	    		$('#status').text(YOUR_TURN_STATUS);    	 			
-    			} else if (message.turn === 'WAITING') {
+    		} else if (message.turn === MESSAGE_TURN_INDICATOR_WAITING) {
 				$('#status').text(STRATEGIZING_STATUS);    	 					    	
     		}
  		}
  		
  		/* The server has determined you are the winner and sent you this message. */
- 		if (message.type === 'game_over') {
-	 		if (message.result === 'YOU_WIN') {
+ 		if (message.type === MESSAGE_GAME_OVER) {
+	 		if (message.result === MESSAGE_GAME_OVER_YOU_WIN) {
 				$('#status').text(YOU_WIN_STATUS);
 			} 
-			else if (message.result === 'TIED') {
+			else if (message.result === MESSAGE_GAME_OVER_TIED) {
 				$('#status').text(TIED_STATUS);
 			}
  		}	
@@ -102,15 +120,6 @@ $(document).ready(function() {
  	ws.onclose = function(event) { 
  		$('#status').text(WEBSOCKET_CLOSED_STATUS); 
  	} 
- 		
- 	//capture the return key
-	$("form").bind("keydown", function(e) {
-		if (e.keyCode == 13) {
-			sendMessage();
-			//prevent default form submission behaviour
-			return false; 
-		}
-	});
 		
 });
 
